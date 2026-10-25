@@ -1,0 +1,144 @@
+if _G.a then
+    for _, connection in pairs(_G.a) do
+        connection:Disconnect()
+    end
+    _G.a = nil
+end
+
+repeat task.wait() until game.Players.LocalPlayer
+local LocalPlayer = game.Players.LocalPlayer
+
+local Character = nil
+local Humanoid = nil
+local HumanoidRootPart = nil
+local IsInvisible = false
+local VisibleParts = {}
+
+local function SetupCharacter()
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Humanoid = Character:WaitForChild("Humanoid")
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    VisibleParts = {}
+
+    for _, descendant in pairs(Character:GetDescendants()) do
+        if descendant:IsA("BasePart") and descendant.Transparency == 0 then
+            table.insert(VisibleParts, descendant)
+        end
+    end
+end
+
+-- Naya aur Beautiful GUI Design
+local function CreateGUI()
+    -- Pehle agar koi purani ScreenGui chal rahi ho toh usko remove karne ke liye
+    local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("InvisibleScriptGui")
+    if oldGui then oldGui:Destroy() end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "InvisibleScriptGui"
+    ScreenGui.ResetOnSpawn = false -- Character marne par GUI ghaib nahi hoga
+    
+    -- Main Container (Taake drag smooth ho aur looks achhi aayin)
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 140, 0, 45)
+    MainFrame.Position = UDim2.new(0.5, -70, 0.1, 0)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Dark Modern Theme
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Draggable = true -- Roblox ka built-in smooth dragging
+    MainFrame.Parent = ScreenGui
+
+    -- Rounded Corners for Main Frame
+    local FrameCorner = Instance.new("UICorner")
+    FrameCorner.CornerRadius = UDim.new(0, 8)
+    FrameCorner.Parent = MainFrame
+
+    -- UI Stroke (Glow Outline Effect)
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Thickness = 1.5
+    UIStroke.Color = Color3.fromRGB(255, 65, 65) -- Shuru me Red border
+    UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    UIStroke.Parent = MainFrame
+
+    -- Toggle Button
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Size = UDim2.new(1, -10, 1, -10)
+    ToggleButton.Position = UDim2.new(0, 5, 0, 5)
+    ToggleButton.BackgroundTransparency = 1 -- Background transparent taake back frame dikhe
+    ToggleButton.Text = "INVISIBLE: OFF"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 65, 65) -- Red Text
+    ToggleButton.Font = Enum.Font.GothamBold -- Modern Premium Font
+    ToggleButton.TextSize = 13
+    ToggleButton.Parent = MainFrame
+
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    -- Function jo button ka color aur text change karegi
+    local function UpdateVisuals()
+        if IsInvisible then
+            ToggleButton.Text = "INVISIBLE: ON"
+            ToggleButton.TextColor3 = Color3.fromRGB(65, 255, 65) -- Green Text jab On ho
+            UIStroke.Color = Color3.fromRGB(65, 255, 65) -- Green Border jab On ho
+        else
+            ToggleButton.Text = "INVISIBLE: OFF"
+            ToggleButton.TextColor3 = Color3.fromRGB(255, 65, 65) -- Red Text jab Off ho
+            UIStroke.Color = Color3.fromRGB(255, 65, 65) -- Red Border jab Off ho
+        end
+    end
+
+    -- Button Click Function
+    ToggleButton.MouseButton1Click:Connect(function()
+        IsInvisible = not IsInvisible
+        UpdateVisuals()
+        local transparency = IsInvisible and 0.5 or 0
+        for _, part in pairs(VisibleParts) do
+            part.Transparency = transparency
+        end
+    end)
+
+    -- Global variable taake Keyboard check bhi GUI ko update kar sake
+    _G.UpdateInvisibleGUI = UpdateVisuals
+end
+
+SetupCharacter()
+CreateGUI()
+
+local Connections = {}
+
+-- Q Key dabaane par bhi GUI update hoga
+Connections[1] = LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+    if key == "q" then
+        IsInvisible = not IsInvisible
+        if _G.UpdateInvisibleGUI then
+            _G.UpdateInvisibleGUI()
+        end
+        local transparency = IsInvisible and 0.5 or 0
+        for _, part in pairs(VisibleParts) do
+            part.Transparency = transparency
+        end
+    end
+end)
+
+Connections[2] = game:GetService("RunService").Heartbeat:Connect(function()
+    if IsInvisible then
+        local OriginalCFrame = HumanoidRootPart.CFrame
+        local OriginalCameraOffset = Humanoid.CameraOffset
+
+        local DownCFrame = OriginalCFrame * CFrame.new(0, -200000, 0)
+        HumanoidRootPart.CFrame = DownCFrame
+        Humanoid.CameraOffset = DownCFrame:ToObjectSpace(CFrame.new(OriginalCFrame.Position)).Position
+
+        game:GetService("RunService").RenderStepped:Wait()
+
+        HumanoidRootPart.CFrame = OriginalCFrame
+        Humanoid.CameraOffset = OriginalCameraOffset
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    IsInvisible = false
+    SetupCharacter()
+    -- Note: GUI baar baar duplicate na ho isliye reset par purana destroy ho jata hai
+    CreateGUI() 
+end)
+
+_G.a = Connections
